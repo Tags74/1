@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SkyShare - Watch</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #000; margin: 0; overflow: hidden; color: white; }
+        #setupUI { height: 100vh; display: flex; align-items: center; justify-content: center; background: #e3f2fd; color: #1a3a5f; }
+        .card { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 300px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        #watchMode { display: none; position: fixed; inset: 0; background: #000; }
+        video { width: 100%; height: 100%; object-fit: contain; }
+        
+        /* UI Elements */
+        .controls { position: absolute; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; }
+        .btn { padding: 12px 20px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
+        .exit-btn { background: #f44336; color: white; }
+        
+        /* Audio Visualization */
+        .viewer-meter-container { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); width: 80%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; overflow: hidden; z-index: 100; }
+        #viewerAudioBar { height: 100%; width: 0%; background: #2196f3; box-shadow: 0 0 10px #2196f3; transition: width 0.1s; }
+        
+        #unmute { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); padding: 25px 40px; background: #2196f3; color: #fff; border: none; border-radius: 50px; font-weight: bold; font-size: 1.2rem; z-index: 200; box-shadow: 0 0 30px rgba(33, 150, 243, 0.5); }
+        #trackInfo { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); font-size: 0.9rem; font-family: sans-serif; font-weight: bold; text-shadow: 1px 1px 2px #000; }
+    </style>
+</head>
+<body>
+
+    <div id="setupUI">
+        <div class="card">
+            <h2 style="color:#2196f3; margin-top:0;">SkyShare Join</h2>
+            <p style="color:#666; font-size: 0.9rem;">Enter the code from the host</p>
+            <input type="text" id="codeIn" placeholder="CODE" style="padding: 15px; font-size: 1.5rem; text-align: center; width: 100%; border-radius: 12px; border: 2px solid #bbdefb; box-sizing: border-box; text-transform: uppercase;">
+            <br><br>
+            <button onclick="join()" class="btn" style="background:#2196f3; color:white; width:100%; font-size: 1.1rem;">JOIN STREAM</button>
+        </div>
+    </div>
+
+    <div id="watchMode">
+        <div class="controls">
+            <button class="btn exit-btn" onclick="location.reload()">EXIT</button>
+        </div>
+
+        <button id="unmute" onclick="startAudio()">🔊 TAP TO UNMUTE</button>
+        
+        <div id="trackInfo">Connecting...</div>
+        <div class="viewer-meter-container">
+            <div id="viewerAudioBar"></div>
+        </div>
+
+        <video id="v" autoplay playsinline muted></video>
+    </div>
+
+    <script>
+        const peer = new Peer();
+        const video = document.getElementById('v');
+        const audioBar = document.getElementById('viewerAudioBar');
+        const trackInfo = document.getElementById('trackInfo');
+        let audioCtx;
+        
+        function join() {
+            const code = document.getElementById('codeIn').value.toUpperCase().trim();
+            if(!code) return alert("Please enter the 6-digit code.");
+
+            // Initialize AudioContext (required for visualizer and iPad sound)
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            // We "call" the host with an empty stream to trigger the response
+            const call = peer.call(code, new MediaStream());
+            
+            call.on('stream', (stream) => {
+                document.getElementById('setupUI').style.display = 'none';
+                document.getElementById('watchMode').style.display = 'block';
+                video.srcObject = stream;
+
+                // Check for Audio Tracks
+                const audioTracks = stream.getAudioTracks();
+                if (audioTracks.length > 0) {
+                    trackInfo.innerText = "Incoming Audio: ACTIVE";
+                    trackInfo.style.color = "#4caf50";
+                    setupViewerVisualizer(stream);
+                } else {
+                    trackInfo.innerText = "Incoming Audio: NONE (Check Host)";
+                    trackInfo.style.color = "#ff5252";
+                }
+            });
+
+            call.on('error', (err) => {
+                alert("Connection failed. Check code or Host status.");
+                location.reload();
+            });
+        }
+
+        function setupViewerVisualizer(stream) {
+            const source = audioCtx.createMediaStreamSource(stream);
+            const analyzer = audioCtx.createAnalyser();
+            source.connect(analyzer);
+            analyzer.fftSize = 256;
+            const data = new Uint8Array(analyzer.frequencyBinCount);
+            
+            function update() {
+                analyzer.getByteFrequencyData(data);
+                const volume = Math.max(...data) / 255 * 100;
+                audioBar.style.width = volume + "%";
+                requestAnimationFrame(update);
+            }
+            update();
+        }
+
+        function startAudio() {
+            // Wake up AudioContext for iOS
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            
+            // Unmute and Play Video
+            video.muted = false;
+            video.play().catch(e => console.log("Play failed:", e));
+            
+            document.getElementById('unmute').style.display = 'none';
+        }
+
+        // Handle peer errors
+        peer.on('error', (err) => {
+            console.error("Peer error:", err);
+            if(err.type === 'peer-disconnected') alert("Host has disconnected.");
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Setup</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f7ff; text-align: center; padding: 20px; color: #1a3a5f; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); max-width: 400px; margin: 40px auto; }
+        h2 { color: #2196f3; }
+        code { background: #333; color: #0f0; padding: 15px; display: block; margin: 20px 0; word-break: break-all; border-radius: 10px; font-family: monospace; }
+        .btn { background: #2196f3; color: white; padding: 15px; border: none; border-radius: 10px; width: 100%; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>iPad Setup</h2>
+        <p>Browsers block mobile audio. Use <b>Larix Broadcaster</b> with this URL:</p>
+        
+        <code id="urlText">srt://vdo.ninja:8888?streamid=sky_bridge</code>
+        
+        <button class="btn" onclick="copyText()">COPY URL</button>
+        
+        <p style="text-align: left; font-size: 0.85rem; margin-top: 20px;">
+            1. Open Larix &gt; Connections.<br>
+            2. New Connection &gt; <b>SRT (Caller)</b>.<br>
+            3. Paste URL and Save.<br>
+            4. Start Broadcast in Larix.
+        </p>
+        <br>
+        <a href="create.html" style="color: #2196f3; text-decoration: none; font-weight: bold;">&larr; Back to Host</a>
+    </div>
+
+    <script>
+        function copyText() {
+            const text = document.getElementById('urlText').innerText;
+            navigator.clipboard.writeText(text);
+            alert("URL Copied! Now paste it into Larix.");
+        }
+    </script>
+</body>
+</html>
